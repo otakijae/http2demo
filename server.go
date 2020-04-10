@@ -12,7 +12,7 @@ func main() {
 
 	// Start the server with TLS, since we are running HTTP2 it must be run with TLS.
 	// Exactly how you would run an HTTP1.1 server with TLS connection.
-	log.Printf("Serving on https://0.0.0.0:8000")
+	log.Printf("Serving on https://localhost:8000")
 	log.Fatal(srv.ListenAndServeTLS("server.crt", "server.key"))
 }
 
@@ -40,13 +40,13 @@ func handle(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		log.Println("Can't push to client")
 	} else {
-		log.Println("Pushing to client")
 		err := pusher.Push("/2nd", nil)
 		if err != nil {
 			log.Printf("Failed push: %v", err)
 		}
-		log.Println("----------------------------------")
 	}
+
+	log.Println("----------------------------------")
 
 	// Send response body
 	w.Write([]byte("Hello"))
