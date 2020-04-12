@@ -1,55 +1,85 @@
-package main
+package http2demo
 
 import (
-	"crypto/tls"
-	"crypto/x509"
-	"flag"
-	"fmt"
-	"io/ioutil"
-	"log"
+	"context"
+	"io"
 	"net/http"
 
 	"golang.org/x/net/http2"
 )
 
-const url = "https://localhost:8000"
+// Client provides HTTP2 client side connection with special arguments
+type Client struct {
+	// Method sets the HTTP method for the dial
+	// The default method, if not set, is HTTP POST.
+	Method string
+	// Header enables sending custom headers to the server
+	Header http.Header
+	// Client is a custom HTTP client to be used for the connection.
+	// The client must have an http2.Transport as it's transport.
+	Client *http.Client
+}
 
-var httpVersion = flag.Int("version", 2, "HTTP version")
+// Connect establishes a full duplex communication with an HTTP2 server with custom client.
+// See h2conn.Connect documentation for more info.
+func (c *Client) Connect(ctx context.Context, urlStr string) (*Conn, *http.Response, error) {
+	reader, writer := io.Pipe()
 
-func main() {
-	flag.Parse()
-	client := &http.Client{}
-
-	// Create a pool with the server certificate since it is not signed by a known CA
-	caCert, err := ioutil.ReadFile("server.crt")
+	// Create a request object to send to the server
+	req, err := http.NewRequest(c.Method, urlStr, reader)
 	if err != nil {
-		log.Fatalf("Reading server certificate: %s", err)
-	}
-	caCertPool := x509.NewCertPool()
-	caCertPool.AppendCertsFromPEM(caCert)
-
-	// Create TLS configuration with the certificate of the server
-	tlsConfig := &tls.Config{
-		RootCAs: caCertPool,
+		return nil, nil, err
 	}
 
-	// Use the proper transport in the client
-	switch *httpVersion {
-	case 1:
-		client.Transport = &http.Transport{TLSClientConfig: tlsConfig}
-	case 2:
-		client.Transport = &http2.Transport{TLSClientConfig: tlsConfig}
+	// Apply custom headers
+	if c.Header != nil {
+		req.Header = c.Header
+	}
+
+	// Apply given context to the sent request
+	req = req.WithContext(ctx)
+
+	// If an http client was not defined, use the default http client
+	httpClient := c.Client
+	if httpClient == nil {
+		httpClient = defaultClient.Client
 	}
 
 	// Perform the request
-	resp, err := client.Get(url)
+	resp, err := httpClient.Do(req)
 	if err != nil {
-		log.Fatalf("Failed get: %s", err)
+		return nil, nil, err
 	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Fatalf("Failed reading response body: %s", err)
-	}
-	fmt.Printf("Got response %d: %s %s\n", resp.StatusCode, resp.Proto, string(body))
+
+	// Create a connection
+	conn, ctx := newConn(req.Context(), resp.Body, writer)
+
+	// Apply the connection context on the request context
+	resp.Request = req.WithContext(ctx)
+
+	return conn, resp, nil
+}
+
+var defaultClient = Client{
+	Method: http.MethodPost,
+	Client: &http.Client{Transport: &http2.Transport{}},
+}
+
+// Connect establishes a full duplex communication with an HTTP2 server.
+//
+// Usage:
+//
+//      conn, resp, err := h2conn.Connect(ctx, url)
+//      if err != nil {
+//          log.Fatalf("Initiate client: %s", err)
+//      }
+//      if resp.StatusCode != http.StatusOK {
+//          log.Fatalf("Bad status code: %d", resp.StatusCode)
+//      }
+//      defer conn.Close()
+//
+//      // use conn
+//
+func Connect(ctx context.Context, urlStr string) (*Conn, *http.Response, error) {
+	return defaultClient.Connect(ctx, urlStr)
 }

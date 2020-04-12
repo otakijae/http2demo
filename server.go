@@ -1,53 +1,82 @@
-package main
+package http2demo
 
 import (
-	"log"
+	"fmt"
+	"io"
 	"net/http"
 )
 
-func main() {
-	// Create a server on port 8000
-	// Exactly how you would run an HTTP1.1 server
-	srv := &http.Server{Addr: "localhost:8000", Handler: http.HandlerFunc(handle)}
+// ErrHTTP2NotSupported is returned by Accept if the client connection does not
+// support HTTP2 connection.
+// The server than can response to the client with an HTTP1.1 as he wishes.
+var ErrHTTP2NotSupported = fmt.Errorf("HTTP2 not supported")
 
-	// Start the server with TLS, since we are running HTTP2 it must be run with TLS.
-	// Exactly how you would run an HTTP1.1 server with TLS connection.
-	log.Printf("Serving on https://localhost:8000")
-	log.Fatal(srv.ListenAndServeTLS("server.crt", "server.key"))
+// Server can "accept" an http2 connection to obtain a read/write object
+// for full duplex communication with a client.
+type Server struct {
+	StatusCode int
 }
 
-func handle(w http.ResponseWriter, r *http.Request) {
-	// Log the request protocol
-	log.Printf("Got connection: %s", r.Proto)
-
-	// Handle 2nd request, must be before push to prevent recursive calls.
-	// Don't worry - Go protect us from recursive push by panicking.
-	if r.URL.Path == "/2nd" {
-		log.Println("Handling 2nd")
-		w.Write([]byte("Hello Again!"))
-		return
+// Accept is used on a server http.Handler to extract a full-duplex communication object with the client.
+// See h2conn.Accept documentation for more info.
+func (u *Server) Accept(w http.ResponseWriter, r *http.Request) (*Conn, error) {
+	if !r.ProtoAtLeast(2, 0) {
+		return nil, ErrHTTP2NotSupported
 	}
-
-	// Handle 1st request
-	log.Println("Handling 1st")
-
-	// Server push must be before response body is being written.
-	// In order to check if the connection supports push, we should use
-	// a type-assertion on the response writer.
-	// If the connection does not support server push, or that the push fails we
-	// just ignore it - server pushes are only here to improve the performance for HTTP2 clients.
-	pusher, ok := w.(http.Pusher)
+	flusher, ok := w.(http.Flusher)
 	if !ok {
-		log.Println("Can't push to client")
-	} else {
-		err := pusher.Push("/2nd", nil)
-		if err != nil {
-			log.Printf("Failed push: %v", err)
-		}
+		return nil, ErrHTTP2NotSupported
 	}
 
-	log.Println("----------------------------------")
+	c, ctx := newConn(r.Context(), r.Body, &flushWrite{w: w, f: flusher})
 
-	// Send response body
-	w.Write([]byte("Hello"))
+	// Update the request context with the connection context.
+	// If the connection is closed by the server, it will also notify everything that waits on the request context.
+	*r = *r.WithContext(ctx)
+
+	w.WriteHeader(u.StatusCode)
+	flusher.Flush()
+
+	return c, nil
+}
+
+var defaultUpgrader = Server{
+	StatusCode: http.StatusOK,
+}
+
+// Accept is used on a server http.Handler to extract a full-duplex communication object with the client.
+// The server connection will be closed when the http handler function will return.
+// If the client does not support HTTP2, an ErrHTTP2NotSupported is returned.
+//
+// Usage:
+//
+//      func (w http.ResponseWriter, r *http.Request) {
+//          conn, err := h2conn.Accept(w, r)
+//          if err != nil {
+//		        log.Printf("Failed creating http2 connection: %s", err)
+//		        http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+//		        return
+//	        }
+//          // use conn
+//      }
+func Accept(w http.ResponseWriter, r *http.Request) (*Conn, error) {
+	return defaultUpgrader.Accept(w, r)
+}
+
+type flushWrite struct {
+	w io.Writer
+	f http.Flusher
+}
+
+func (w *flushWrite) Write(data []byte) (int, error) {
+	n, err := w.w.Write(data)
+	w.f.Flush()
+	return n, err
+}
+
+func (w *flushWrite) Close() error {
+	// Currently server side close of connection is not supported in Go.
+	// The server closes the connection when the http.Handler function returns.
+	// We use connection context and cancel function as a work-around.
+	return nil
 }
