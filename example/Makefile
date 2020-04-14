@@ -10,5 +10,11 @@ echo-server:
 echo-client:
 	go run ./echo/client.go
 
+push-server:
+	go run ./push/server.go
+
+push-client:
+	go run ./push/client.go
+
 certs:
 	openssl req -newkey rsa:2048 -nodes -keyout server.key -x509 -days 365 -out server.crt

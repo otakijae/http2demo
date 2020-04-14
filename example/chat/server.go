@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/posener/h2conn"
+	"github.com/ninetyfivejae/http2demo"
 )
 
 type encoder interface {

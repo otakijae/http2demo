@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/marcusolsson/tui-go"
-	"github.com/posener/h2conn"
+	"github.com/ninetyfivejae/http2demo"
 	"golang.org/x/net/http2"
 )
 
@@ -93,7 +93,10 @@ func main() {
 		input.SetText("")
 	})
 
-	ui := tui.New(root)
+	ui, err := tui.New(root)
+	if err != nil {
+		panic(err)
+	}
 	ui.SetKeybinding("Esc", func() { ui.Quit() })
 
 	go func() {

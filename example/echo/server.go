@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/posener/h2conn"
+	"github.com/ninetyfivejae/http2demo"
 )
 
 func main() {
@@ -19,7 +19,7 @@ func main() {
 type handler struct{}
 
 func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	conn, err := h2conn.Accept(w, r)
+	conn, err := http2demo.Accept(w, r)
 	if err != nil {
 		log.Printf("Failed creating connection from %s: %s", r.RemoteAddr, err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
