@@ -9,7 +9,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"os/signal"
 	"strings"
 
 	"github.com/ninetyfivejae/http2demo"
@@ -57,7 +56,6 @@ func main() {
 	// Loop until user terminates
 	fmt.Println("Echo session starts, press ctrl-C to terminate.")
 	for ctx.Err() == nil {
-
 		// Ask the user to give a message to send to the server
 		fmt.Print("Send: ")
 		msg, err := stdin.ReadString('\n')
@@ -81,12 +79,4 @@ func main() {
 
 		fmt.Printf("Got response %q\n", resp)
 	}
-}
-
-func catchSignal(cancel context.CancelFunc) {
-	sig := make(chan os.Signal)
-	signal.Notify(sig, os.Interrupt)
-	<-sig
-	log.Println("Cancelling due to interrupt")
-	cancel()
 }

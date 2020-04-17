@@ -1,4 +1,4 @@
-package main
+package http2demo
 
 import (
 	"context"
