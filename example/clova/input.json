@@ -1,0 +1,36 @@
+{
+  "context": {
+    "System": {
+      "application": {
+        "applicationId": "com.example.cek_server"
+      },
+      "user": {
+        "userId": "YwysHqtcSqOR1avs_05mhQ",
+        "accessToken": "12110501-e790-41bb-b4c8-fa791227addd"
+      },
+      "device": {
+        "deviceId": "ba3346b3-0b8c-45b5-9f2d-4eb6ab9a41ea",
+        "display": {
+          "size": "l100",
+          "orientation": "landscape",
+          "dpi": 96,
+          "contentLayer": {
+            "width": 640,
+            "height": 360
+          }
+        }
+      }
+    }
+  },
+  "event": {
+    "header": {
+      "namespace": "TextRecognizer",
+      "name": "Recognize",
+      "dialogRequestId": "bc834682-6d22-4bbb-8352-4a49df2ed3d7",
+      "messageId": "b120c3e0-e6b9-4a3d-96de-71539e5f6214"
+    },
+    "payload": {
+      "text": "지금 날씨 어때?"
+    }
+  }
+}

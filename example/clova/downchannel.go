@@ -1,103 +1,89 @@
-//package main
-//
-//import (
-//	"bufio"
-//	"context"
-//	"crypto/tls"
-//	"encoding/json"
-//	"log"
-//	"net/http"
-//	"os"
-//	"strings"
-//	"fmt"
-//
-//	"github.com/ninetyfivejae/http2demo"
-//	"golang.org/x/net/http2"
-//)
-//
-//const url = "https://prod-ni-cic.clova.ai/v1/directives"
+package main
 
-//func main() {
-//	client := http.Client{
-//		Transport: &http2.Transport{
-//			AllowHTTP: true,
-//			DialTLS: func(network, addr string, cfg *tls.Config) (net.Conn, error) {
-//				return net.Dial(network, addr)
-//			},
-//		},
-//	}
-//
-//	resp, err := client.Get(url)
-//	if err != nil {
-//		panic(err)
-//	}
-//	fmt.Printf("Client Proto: %d\n", resp.ProtoMajor)
-//
-//	req, err := http.NewRequest("GET", url, nil)
-//	if err != nil {
-//		panic(err)
-//	}
-//
-//	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-//	defer cancel()
-//
-//	tr := &http2.Transport{
-//		AllowHTTP: true,
-//		DialTLS: func(network, addr string, cfg *tls.Config) (net.Conn, error) {
-//			return net.Dial(network, addr)
-//		},
-//	}
-//
-//	req.WithContext(ctx)
-//	resp2, err := tr.RoundTrip(req)
-//	if err != nil {
-//		panic(err)
-//	}
-//
-//	fmt.Printf("RoundTrip Proto: %d\n", resp2.ProtoMajor)
-//}
+import (
+	"bytes"
+	"io/ioutil"
+	"net/http"
+	"fmt"
 
+	"golang.org/x/net/http2"
+	//"github.com/ninetyfivejae/avs"
+)
+
+const url = "https://prod-ni-cic.clova.ai/v1/directives"
+
+func  main() {
+	client := http.Client{
+		// InsecureTLSDial is temporary and will likely be
+		// replaced by a different API later.
+		Transport: &http2.Transport{AllowHTTP: true,},
+	}
+
+	// Request 객체 생성
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		panic(err)
+	}
+	//필요시 헤더 추가 가능
+	req.Header.Add("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.163 Safari/537.36")
+	req.Header.Add("Authorization", "Bearer _CjtPUecQPKO6-_W_udQeQ")
+
+	// Client객체에서 Request 실행
+	resp, err := client.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	// 결과 출력
+	result, _ := ioutil.ReadAll(resp.Body)
+	str := string(result) //바이트를 문자열로
+	fmt.Println(str)
+
+	if request, err := ioutil.ReadFile("input.json"); err != nil {
+		panic(err)
+	} else {
+		if req, err := http.NewRequest("POST", "https://prod-ni-cic.clova.ai/v1/events", bytes.NewBuffer(request)); err != nil {
+			panic(err)
+		} else {
+			req.Header.Add("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.163 Safari/537.36")
+			req.Header.Add("Authorization", "Bearer _CjtPUecQPKO6-_W_udQeQ")
+			req.Header.Add("Content-Type", "application/json; charset=UTF-8")
+			req.Header.Add("Content-Disposition", "form-data; name=metadata")
+
+			// Client객체에서 Request 실행
+			resp, err := client.Do(req)
+			if err != nil {
+				panic(err)
+			}
+			defer resp.Body.Close()
+
+			// 결과 출력
+			result, _ := ioutil.ReadAll(resp.Body)
+			str := string(result) //바이트를 문자열로
+			fmt.Println(str)
+		}
+	}
+}
+
+//const ACCESS_TOKEN = "_CjtPUecQPKO6-_W_udQeQ"
+//
 //func main() {
-//	c := http.Client{}
-//
-//	// According to the CloudFront documentation for a request behavior, if the
-//	// request is GET and includes a body, it returns a 403 Forbidden. See the
-//	// documentation here:
-//	// https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/RequestAndResponseBehaviorCustomOrigin.html#RequestCustom-get-body
-//
-//	// var body bytes.Buffer
-//	r, err := http.NewRequest("GET", url, http.NoBody)
+//	directives, err := avs.CreateDownchannel(ACCESS_TOKEN)
 //	if err != nil {
-//		log.Fatalf("error creating the request: %s", err)
+//		fmt.Printf("Failed to open downchannel: %v\n", err)
+//		return
 //	}
-//
-//	//r.Header.Add("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.163 Safari/537.36")
-//	//r.Header.Add("Authorization", "Bearer AAAAu1xf2KwhK3A1JVbk+sXdp857iriGgf2/8xqlcU68XtEnjnPadfgjRKIjCTaA0gFt/+EW7PCf4irJ7E3SS0akPjE6bkNiE3gX1veldEJBh7OBP")
-//
-//	res, err := c.Do(r)
-//	if err != nil {
-//		log.Fatalf("error doing the request: %s", err)
+//	// Wait for directives to come in on the downchannel.
+//	for directive := range directives {
+//		switch d := directive.Typed().(type) {
+//		case *avs.DeleteAlert:
+//			fmt.Println("Unset alert:", d.Payload.Token)
+//		case *avs.SetAlert:
+//			fmt.Printf("Set alert %s (%s) for %s\n", d.Payload.Token, d.Payload.Type, d.Payload.ScheduledTime)
+//		default:
+//			fmt.Println("No code to handle directive:", d)
+//		}
 //	}
-//	io.Copy(ioutil.Discard, res.Body)
-//	res.Body.Close()
-//
-//	log.Printf("response status for an HTTP/2 request: %s", res.Status)
-//
-//	// doing the same request without HTTP/2 does work
-//	c.Transport = &http.Transport{
-//		TLSNextProto: map[string]func(string, *tls.Conn) http.RoundTripper{},
-//	}
-//	r, err = http.NewRequest("GET", url, http.NoBody)
-//	if err != nil {
-//		log.Fatalf("error creating the request: %s", err)
-//	}
-//
-//	res, err = c.Do(r)
-//	if err != nil {
-//		log.Fatalf("error doing the request: %s", err)
-//	}
-//	io.Copy(ioutil.Discard, res.Body)
-//	res.Body.Close()
-//
-//	log.Printf("response status for an HTTP/1 request: %s", res.Status)
+//	fmt.Println("Downchannel closed. Bye!")
 //}

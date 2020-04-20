@@ -1,14 +1,11 @@
 package main
 
 import (
-	"bufio"
-	"context"
 	"crypto"
 	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
-	"encoding/json"
 	"encoding/pem"
 	"flag"
 	"fmt"
@@ -17,10 +14,8 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 
-	"github.com/ninetyfivejae/http2demo"
 	"golang.org/x/net/http2"
 )
 
@@ -73,75 +68,6 @@ func main() {
 	bytes, _ := ioutil.ReadAll(resp.Body)
 	str := string(bytes) //바이트를 문자열로
 	fmt.Println(str)
-
-
-
-
-
-
-
-
-
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	// We use a client with custom http2.Transport since the server certificate is not signed by
-	// an authorized CA, and this is the way to ignore certificate verification errors.
-	d := &http2demo.Client{
-		Client: &http.Client{
-			Transport: &http2.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
-		},
-	}
-
-	conn, resp, err := d.Connect(ctx, url)
-	if err != nil {
-		log.Fatalf("Initiate conn: %s", err)
-	}
-	defer conn.Close()
-
-	// Check server status code
-	if resp.StatusCode != http.StatusOK {
-		log.Fatalf("Bad status code: %d", resp.StatusCode)
-	}
-
-	var (
-		// stdin reads from stdin
-		stdin = bufio.NewReader(os.Stdin)
-
-		// in and out send and receive json messages to the server
-		in  = json.NewDecoder(conn)
-		out = json.NewEncoder(conn)
-	)
-
-	defer log.Println("Exited")
-
-	// Loop until user terminates
-	fmt.Println("Echo session starts, press ctrl-C to terminate.")
-	for ctx.Err() == nil {
-		// Ask the user to give a message to send to the server
-		fmt.Print("Send: ")
-		msg, err := stdin.ReadString('\n')
-		if err != nil {
-			log.Fatalf("Failed reading stdin: %v", err)
-		}
-		msg = strings.TrimRight(msg, "\n")
-
-		// Send the message to the server
-		err = out.Encode(msg)
-		if err != nil {
-			log.Fatalf("Failed sending message: %v", err)
-		}
-
-		// Receive the response from the server
-		var resp string
-		err = in.Decode(&resp)
-		if err != nil {
-			log.Fatalf("Failed receiving message: %v", err)
-		}
-
-		fmt.Printf("Got response %q\n", resp)
-	}
 }
 
 var publicKey *rsa.PublicKey
