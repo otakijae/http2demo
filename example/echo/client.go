@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
 
 	"github.com/ninetyfivejae/http2demo"
@@ -79,4 +80,12 @@ func main() {
 
 		fmt.Printf("Got response %q\n", resp)
 	}
+}
+
+func catchSignal(cancel context.CancelFunc) {
+	sig := make(chan os.Signal)
+	signal.Notify(sig, os.Interrupt)
+	<-sig
+	log.Println("Cancelling due to interrupt")
+	cancel()
 }
