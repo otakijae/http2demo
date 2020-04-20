@@ -28,7 +28,7 @@ func main() {
 }
 
 func (c *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	conn, err := h2conn.Accept(w, r)
+	conn, err := http2demo.Accept(w, r)
 	if err != nil {
 		log.Printf("Failed creating http2 connection: %s", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)

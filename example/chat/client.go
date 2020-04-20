@@ -24,7 +24,7 @@ func main() {
 
 	// We use a client with custom http2.Transport since the server certificate is not signed by
 	// an authorized CA, and this is the way to ignore certificate verification errors.
-	d := &h2conn.Client{
+	d := &http2demo.Client{
 		Client: &http.Client{
 			Transport: &http2.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
 		},
