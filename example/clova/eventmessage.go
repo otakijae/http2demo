@@ -27,7 +27,7 @@ func  main()  {
 		} else {
 			req.Header.Add("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.163 Safari/537.36")
 			req.Header.Add("Authorization", "Bearer _CjtPUecQPKO6-_W_udQeQ")
-			req.Header.Add("Content-Type", "application/json; charset=UTF-8; multipart/form-data; boundary=--920d6335ba920d6337a319f")
+			req.Header.Add("Content-Type", "multipart/form-data; boundary=Boundary-Text")
 			req.Header.Add("Content-Disposition", "form-data; name=\"metadata\"")
 
 			// Client객체에서 Request 실행
