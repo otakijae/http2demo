@@ -10,12 +10,16 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"mime"
+	"mime/multipart"
 	"net/http"
+	"os"
+	"strings"
 	"sync"
 	"time"
 )
 
-const clovaAccessToken = "iuV3BMFjQfGNS9Aqh4pjRg"
+const clovaAccessToken = "4PRu4SqcRBmHleOBK3x2AQ"
 
 func sendEventMessage(conn *Conn, ctx context.Context, urlStr string) {
 	d := defaultClient
@@ -25,7 +29,11 @@ func sendEventMessage(conn *Conn, ctx context.Context, urlStr string) {
 		panic(err)
 	}
 
-	req, err := http.NewRequest("POST", urlStr, bytes.NewBuffer(input))
+	conn.Write(input)
+	conn.r = bytes.NewBuffer(input)
+
+	//req, err := http.NewRequest("POST", urlStr, bytes.NewBuffer(input))
+	req, err := http.NewRequest("POST", urlStr, conn.r)
 	if err != nil {
 		panic(err)
 	}
@@ -38,11 +46,11 @@ func sendEventMessage(conn *Conn, ctx context.Context, urlStr string) {
 	if resp, err := d.Client.Do(req); err != nil {
 		panic(err)
 	} else {
-		defer resp.Body.Close()
 		result, _ := ioutil.ReadAll(resp.Body)
 		//str := string(result)
 		//fmt.Println(str)
 
+		conn.r = resp.Body
 		conn.Write(result)
 	}
 }
@@ -70,64 +78,33 @@ func main() {
 	}
 
 	var (
-		//stdin = bufio.NewReader(os.Stdin)
+	//stdin = bufio.NewReader(os.Stdin)
 
-		in  = json.NewDecoder(conn)
-		//out = json.NewEncoder(conn)
+	//in  = json.NewDecoder(conn)
+	//out = json.NewEncoder(conn)
 	)
 
 	defer log.Println("Exited")
 
+	d.Method = http.MethodPost
+	go func() {
+		for i := 0; i < 3; i++ {
+			time.Sleep(time.Second * 3)
+			sendEventMessage(conn, ctx, "https://prod-ni-cic.clova.ai/v1/events")
+		}
+	}()
+
 	fmt.Println("Echo session starts, press ctrl-C to terminate.")
 	for ctx.Err() == nil {
-		//fmt.Print("Send: ")
-		//msg, err := stdin.ReadString('\n')
-		//if err != nil {
-		//	log.Fatalf("Failed reading stdin: %v", err)
-		//}
-		//msg = strings.TrimRight(msg, "\n")
 
 		//err = out.Encode(msg)
 		//if err != nil {
 		//	log.Fatalf("Failed sending message: %v", err)
 		//}
 
-		go func() {
-			for i := 0; i < 5; i++ {
-				time.Sleep(time.Second * 5)
-				sendEventMessage(conn, ctx, "https://prod-ni-cic.clova.ai/v1/events")
-			}
-		}()
-
-		fmt.Println("###")
-		fmt.Println(ctx.Err())
-
-		//body := &bytes.Buffer{}
-		//if _, err := body.ReadFrom(resp.Body); err != nil {
-		//	log.Fatal(err)
-		//}
-		//fmt.Println(resp.StatusCode)
-		//fmt.Println(resp.Header)
-		//fmt.Println(body)
-
-		//var response map[string]string
-		//err = in.Decode(&response)
-		//if err != nil {
-		//	log.Fatalf("Failed receiving message: %v", err)
-		//}
-		//fmt.Printf("Got response %q\n", response)
-
-		//if _, err := io.Copy(os.Stdout, resp.Body); err != nil {
-		//	log.Fatal(err)
-		//}
-
-		//a, _ := ioutil.ReadAll(conn.r)
-		//str := string(a)
-		//fmt.Println(str)
-
-		var result map[string]interface{}
-		in.Decode(&result)
-		log.Println(result)
+		if _, err := io.Copy(os.Stdout, conn.r); err != nil {
+			log.Fatal(err)
+		}
 	}
 }
 
@@ -171,21 +148,6 @@ var defaultClient = Client{
 	Client: &http.Client{Transport: &http2.Transport{}},
 }
 
-// Connect establishes a full duplex communication with an HTTP2 server.
-//
-// Usage:
-//
-//      conn, resp, err := h2conn.Connect(ctx, url)
-//      if err != nil {
-//          log.Fatalf("Initiate client: %s", err)
-//      }
-//      if resp.StatusCode != http.StatusOK {
-//          log.Fatalf("Bad status code: %d", resp.StatusCode)
-//      }
-//      defer conn.Close()
-//
-//      // use conn
-//
 func Connect(ctx context.Context, urlStr string) (*Conn, *http.Response, error) {
 	return defaultClient.Connect(ctx, urlStr)
 }
@@ -224,4 +186,32 @@ func (c *Conn) Read(data []byte) (int, error) {
 func (c *Conn) Close() error {
 	c.cancel()
 	return c.wc.Close()
+}
+
+
+type Response struct {
+	RequestId string
+	Directives []*Message
+	Content map[string][]byte
+}
+
+type Message struct {
+	Header  map[string]string `json:"header"`
+	Payload json.RawMessage   `json:"payload,omitempty"`
+}
+
+func newMultipartReaderFromResponse(resp *http.Response) (*multipart.Reader, error) {
+	contentType := strings.Replace(resp.Header.Get("Content-Type"), "type=application/json", `type="application/json"`, 1)
+	mediatype, params, err := mime.ParseMediaType(contentType)
+	if err != nil {
+		return nil, err
+	}
+	if !strings.HasPrefix(mediatype, "multipart/") {
+		return nil, fmt.Errorf("unexpected content type %s", mediatype)
+	}
+	return multipart.NewReader(resp.Body, params["boundary"]), nil
+}
+
+type responsePart struct {
+	Directive *Message
 }
