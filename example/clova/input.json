@@ -58,7 +58,9 @@ Content-Type: application/json; charset=UTF-8
       "dialogRequestId": "qwer"
     },
     "payload": {
-      "text": "지금 날씨 어때?"
+      "text": "오늘 일정 알려줘",
+      "speechId": "6ec35081-5f92-4586-86ec-7e560d9b4c32",
+      "explicit": true
     }
   }
 }

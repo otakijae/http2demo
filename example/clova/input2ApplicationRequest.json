@@ -1,0 +1,42 @@
+--Boundary-Text
+Content-Disposition: form-data; name="metadata"
+Content-Type: application/json; charset=UTF-8
+
+{
+  "context": [
+    {
+      "header": {
+        "namespace": "CDK",
+        "name": "Applications"
+      },
+      "payload": {
+        "applications": [
+          {
+            "id": "com.worksmobile.assistant",
+            "enabled": true,
+            "available": true,
+            "foreground": true,
+            "applicationData": "number=123456&room=sally&next=true"
+          }
+        ]
+      }
+    }
+  ],
+  "event": {
+    "header": {
+      "namespace": "CDK",
+      "name": "ApplicationRequest",
+      "messageId": "1234"
+    },
+    "payload": {
+      "application": {
+        "id": "com.worksmobile.assistant"
+      },
+      "applicationData": {
+        "ACCOUNT_ID": "dev-wm10257@qamail.navercorp.com"
+      }
+    }
+  }
+}
+
+--Boundary-Text--

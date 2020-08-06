@@ -1,0 +1,22 @@
+--Boundary-Text
+Content-Disposition: form-data; name="metadata"
+Content-Type: application/json; charset=UTF-8
+
+{
+  "context": [],
+  "event": {
+    "header": {
+      "namespace": "TextRecognizer",
+      "name": "Recognize",
+      "messageId": "1234a",
+      "dialogRequestId": "qwera"
+    },
+    "payload": {
+      "text": "박지성",
+      "speechId": "08ee1826-05ff-477a-995c-f8f97f9e26a5",
+      "explicit": true
+    }
+  }
+}
+
+--Boundary-Text--

@@ -1,25 +1,25 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"crypto/tls"
-	"encoding/json"
 	"fmt"
-	"golang.org/x/net/http2"
 	"io"
 	"io/ioutil"
 	"log"
-	"mime"
-	"mime/multipart"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
 	"sync"
 	"time"
+
+	"golang.org/x/net/http2"
 )
 
-const clovaAccessToken = "4PRu4SqcRBmHleOBK3x2AQ"
+const clovaAccessToken = "peSGYmiDQ4SzuyXryr0uag"
 
 func sendEventMessage(conn *Conn, ctx context.Context, urlStr string) {
 	d := defaultClient
@@ -50,14 +50,17 @@ func sendEventMessage(conn *Conn, ctx context.Context, urlStr string) {
 		//str := string(result)
 		//fmt.Println(str)
 
-		conn.r = resp.Body
-		conn.Write(result)
+		conn.wc.Write(result)
+		//conn, ctx := newConn(req.Context(), resp.Body, writer)
+		resp.Request = req.WithContext(ctx)
 	}
 }
 
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	go catchSignal(cancel)
 
 	d := defaultClient
 	d.Client.Transport = &http2.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, AllowHTTP: true}
@@ -78,10 +81,10 @@ func main() {
 	}
 
 	var (
-	//stdin = bufio.NewReader(os.Stdin)
+		stdin = bufio.NewReader(os.Stdin)
 
-	//in  = json.NewDecoder(conn)
-	//out = json.NewEncoder(conn)
+		//in  = json.NewDecoder(conn)
+		//out = json.NewEncoder(conn)
 	)
 
 	defer log.Println("Exited")
@@ -96,15 +99,55 @@ func main() {
 
 	fmt.Println("Echo session starts, press ctrl-C to terminate.")
 	for ctx.Err() == nil {
+		fmt.Print("Input: ")
+		msg, err := stdin.ReadString('\n')
+		if err != nil {
+			log.Fatalf("Failed reading stdin: %v", err)
+		}
+		msg = strings.TrimRight(msg, "\n")
 
 		//err = out.Encode(msg)
 		//if err != nil {
 		//	log.Fatalf("Failed sending message: %v", err)
 		//}
 
-		if _, err := io.Copy(os.Stdout, conn.r); err != nil {
+		go func() {
+			//for i := 0; i < 5; i++ {
+			//	time.Sleep(time.Second * 5)
+			//}
+			sendEventMessage(conn, ctx, "https://prod-ni-cic.clova.ai/v1/events")
+		}()
+
+		fmt.Println()
+
+		//body := &bytes.Buffer{}
+		//if _, err := body.ReadFrom(resp.Body); err != nil {
+		//	log.Fatal(err)
+		//}
+		//fmt.Println(resp.StatusCode)
+		//fmt.Println(resp.Header)
+		//fmt.Println(body)
+
+		//var response map[string]string
+		//err = in.Decode(&response)
+		//if err != nil {
+		//	log.Fatalf("Failed receiving message: %v", err)
+		//}
+		//fmt.Printf("Got response %q\n", response)
+
+		n, err := io.Copy(os.Stdout, resp.Body)
+		if err != nil {
 			log.Fatal(err)
 		}
+		log.Printf("done Reading the server response's body n=(%v) err=%v\nres.headers: %v\n", n, err, resp.Header)
+
+		//a, _ := ioutil.ReadAll(conn.r)
+		//str := string(a)
+		//fmt.Println(str)
+
+		//var result map[string]interface{}
+		//in.Decode(&result)
+		//log.Println(result)
 	}
 }
 
@@ -188,30 +231,10 @@ func (c *Conn) Close() error {
 	return c.wc.Close()
 }
 
-
-type Response struct {
-	RequestId string
-	Directives []*Message
-	Content map[string][]byte
-}
-
-type Message struct {
-	Header  map[string]string `json:"header"`
-	Payload json.RawMessage   `json:"payload,omitempty"`
-}
-
-func newMultipartReaderFromResponse(resp *http.Response) (*multipart.Reader, error) {
-	contentType := strings.Replace(resp.Header.Get("Content-Type"), "type=application/json", `type="application/json"`, 1)
-	mediatype, params, err := mime.ParseMediaType(contentType)
-	if err != nil {
-		return nil, err
-	}
-	if !strings.HasPrefix(mediatype, "multipart/") {
-		return nil, fmt.Errorf("unexpected content type %s", mediatype)
-	}
-	return multipart.NewReader(resp.Body, params["boundary"]), nil
-}
-
-type responsePart struct {
-	Directive *Message
+func catchSignal(cancel context.CancelFunc) {
+	sig := make(chan os.Signal)
+	signal.Notify(sig, os.Interrupt)
+	<-sig
+	log.Println("Cancelling due to interrupt")
+	cancel()
 }
