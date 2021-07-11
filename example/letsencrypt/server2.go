@@ -8,21 +8,20 @@ import (
 )
 
 func main() {
-
 	// generate a `Certificate` struct
-	cert, _ := tls.LoadX509KeyPair( "server.crt", "server.key" )
+	cert, _ := tls.LoadX509KeyPair("cert.crt", "cert.key")
 
 	// create a custom server with `TLSConfig`
 	s := &http.Server{
 		Addr: ":5050",
 		TLSConfig: &tls.Config{
-			Certificates: []tls.Certificate{ cert },
+			Certificates: []tls.Certificate{cert},
 		},
 	}
 
-	http.HandleFunc( "/", func( res http.ResponseWriter, req *http.Request ) {
-		fmt.Fprint( res, "Hello World!" )
-	} )
+	http.HandleFunc("/", func(res http.ResponseWriter, req *http.Request) {
+		fmt.Fprint(res, "Hello World!")
+	})
 
-	log.Fatal( s.ListenAndServeTLS("server.crt", "server.key") )
+	log.Fatal(s.ListenAndServeTLS("cert.crt", "cert.key"))
 }
