@@ -1,36 +1,36 @@
 package main
 
 import (
-    "crypto/tls"
-    "log"
+	"crypto/tls"
+	"log"
 )
 
 func main() {
-    log.SetFlags(log.Lshortfile)
+	log.SetFlags(log.Lshortfile)
 
-    conf := &tls.Config{
-         InsecureSkipVerify: true,
-    }
+	conf := &tls.Config{
+		InsecureSkipVerify: true,
+	}
 
-    conn, err := tls.Dial("tcp", "localhost:5050", conf)
-    if err != nil {
-        log.Println(err)
-        return
-    }
-    defer conn.Close()
+	conn, err := tls.Dial("tcp", "localhost:5050", conf)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	defer conn.Close()
 
-    n, err := conn.Write([]byte("hello\n"))
-    if err != nil {
-        log.Println(n, err)
-        return
-    }
+	n, err := conn.Write([]byte("hello\n"))
+	if err != nil {
+		log.Println(n, err)
+		return
+	}
 
-    buf := make([]byte, 100)
-    n, err = conn.Read(buf)
-    if err != nil {
-        log.Println(n, err)
-        return
-    }
+	buf := make([]byte, 100)
+	n, err = conn.Read(buf)
+	if err != nil {
+		log.Println(n, err)
+		return
+	}
 
-    println(string(buf[:n]))
+	println(string(buf[:n]))
 }
