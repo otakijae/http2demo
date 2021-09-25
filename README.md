@@ -11,6 +11,13 @@ HTTP/2 enforces TLS. In order to achieve this we first need a private key and a 
 openssl req -newkey rsa:2048 -nodes -keyout server.key -x509 -days 365 -out server.crt
 ```
 
+reference mac os letsencrypt certbot으로 인증서 발급
+
+```
+sudo certbot certonly --manual --email jh33836782@gmail.com -d 6ea4-183-101-7-107.ngrok.io:8443
+//do the challenge specified
+```
+
 ## conn.go
 
 ```go
